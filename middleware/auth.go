@@ -3,6 +3,7 @@ package middleware
 import (
 	"CookIt/controllers"
 	"CookIt/models"
+	"fmt"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
@@ -28,7 +29,7 @@ func GetAuthMiddleware() (*jwt.GinJWTMiddleware, error) {
 		},
 		PayloadFunc: func(data interface{}) jwt.MapClaims {
 			if v, ok := data.(*models.User); ok {
-				//fmt.Println(v.Email)
+				fmt.Println(v.Email)
 				return jwt.MapClaims{identityKey: v.Email}
 			}
 

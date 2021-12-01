@@ -62,7 +62,7 @@ func Register(c *gin.Context) {
 	}
 
 	ispasswordstrong, _ := IsPasswordStrong(tempUser.Password)
-	if ispasswordstrong == false {
+	if !ispasswordstrong {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Password is not strong."})
 		return
 	}
@@ -133,7 +133,7 @@ func Login(c *gin.Context) (interface{}, error) {
 	if count == 0 {
 		return nil, jwt.ErrFailedAuthentication
 	}
-	if CheckCredentials(loginVals.Email, loginVals.Password, models.DB) == true {
+	if CheckCredentials(loginVals.Email, loginVals.Password, models.DB) {
 		return &models.User{
 			Email: email,
 		}, nil

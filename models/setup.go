@@ -103,7 +103,7 @@ func ConnectDataBase() {
 	// connection.AutoMigrate(models...)
 
 	//normal migration
-	err = connection.AutoMigrate(&UserRole{}, &User{})
+	err = connection.AutoMigrate(&Recipe{}, &UserRole{}, &User{})
 	if err != nil {
 		fmt.Println("error in migration: ", err)
 	}

@@ -14,7 +14,13 @@ func PublicEndpoints(r *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddleware) {
 
 	r.POST("/register", controllers.Register)
 	r.POST("/login", authMiddleware.LoginHandler)
-	// r.POST("/logout", authMiddleware.LogoutHandler)
+	r.POST("/logout", authMiddleware.LogoutHandler)
+}
+
+func AuthenticatedEndpoints(r *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddleware) {
+
+	r.POST("books/create", controllers.CreateRecipe)
+
 }
 
 func GetRouter(router chan *gin.Engine) {
@@ -28,5 +34,6 @@ func GetRouter(router chan *gin.Engine) {
 	// Create a BASE_URL - /api/v1
 	v1 := r.Group("/api/v1/")
 	PublicEndpoints(v1, authMiddleware)
+	AuthenticatedEndpoints(v1.Group("auth"), authMiddleware)
 	router <- r
 }
