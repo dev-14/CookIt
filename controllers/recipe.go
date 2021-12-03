@@ -2,17 +2,45 @@ package controllers
 
 import (
 	"CookIt/models"
+	"bufio"
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
+	"strings"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 )
 
-type tempRecipe struct {
-	Name        string
-	Description string
-	Ingredients map[string]string
+type temp struct {
+	key   string
+	value string
+}
+
+type JSON json.RawMessage
+
+// Scan scan value into Jsonb, implements sql.Scanner interface
+func (j *JSON) Scan(value interface{}) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", value))
+	}
+
+	result := json.RawMessage{}
+	err := json.Unmarshal(bytes, &result)
+	*j = JSON(result)
+	return err
+}
+
+// Value return json value, implement driver.Valuer interface
+func (j JSON) Value() (driver.Value, error) {
+	if len(j) == 0 {
+		return nil, nil
+	}
+	return json.RawMessage(j).MarshalJSON()
 }
 
 // CreateBook godoc
@@ -27,7 +55,8 @@ type tempRecipe struct {
 func CreateRecipe(c *gin.Context) {
 
 	var existingRecipe models.Recipe
-	var tempRecipe models.Recipe
+	//var ingred JSON
+	//var tempRecipe models.Recipe
 	claims := jwt.ExtractClaims(c)
 	user_email, _ := claims["email"]
 	//var ingredients []string
@@ -62,28 +91,82 @@ func CreateRecipe(c *gin.Context) {
 	// // 	return
 	// // }
 
-	// name := template.HTMLEscapeString(c.PostForm("name"))
-	// description := template.HTMLEscapeString(c.PostForm("description"))
-	// ingredients = template.HTMLEscapeString(c.PostForm("ingredients"))
+	name := template.HTMLEscapeString(c.PostForm("name"))
+	description := template.HTMLEscapeString(c.PostForm("description"))
+	ingredient := template.HTMLEscapeString(c.PostForm("ingredients"))
 
+	var jsonMap json.RawMessage
+	json.Unmarshal([]byte(ingredient), &jsonMap)
 	//unmarshaled := json.Unmarshal([]byte(ingred[]), &ingredients)
 
 	//ingredients = template.HTMLEscapeString(c.PostForm("ingredients"))
+	//c.Value()
+	// func (c models.Recipe) Value() (driver.Value, error) {
+	// 	return json.Marshal(c)
+	// }
 
-	if err := c.ShouldBindJSON(&tempRecipe); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	// func (c *models.Recipe) Scan(value interface{}) error {
+	// 	b, ok := value.([]byte)
+	// 	if !ok {
+	// 	  return errors.New("type assertion to []byte failed")
+	// 	}
+	// 	return json.Unmarshal(b, &c)
+	// }
+	//fmt.Println(name, description)
 
-	var b []byte
+	// if err := c.BindJSON(&tempRecipe); err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// 	return
+	// }
+
+	//var b []byte
 	// json.Unmarshal(b, &tempRecipe)
-	fmt.Println(tempRecipe)
-	//Check if the product already exists.
-	err := models.DB.Where("name = ?", tempRecipe.Name).First(&existingRecipe).Error
+	// fmt.Println(tempRecipe)
+	// //Check if the product already exists.
+	err := models.DB.Where("name = ?", name).First(&existingRecipe).Error
 	if err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "recipe already exists."})
 		return
 	}
+	// r := csv.NewReader(strings.NewReader(ingredient))
+	// list, e := r.ReadAll()
+	// if e != nil {
+	// 	panic(e)
+	// }
+	// var ing []string
+	// for _, List := range list {
+	// 	ing = append(ing, List...)
+	// }
+	var ing []string
+	// reader := strings.NewReader(ingredient)
+	// scanner := bufio.NewScanner(reader)
+
+	// // optionally, resize scanner's capacity for lines over 64K, see next example
+	// for scanner.Scan() {
+	// 	ing = append(ing, scanner.Text())
+	// 	fmt.Println(scanner.Text())
+	// }
+
+	// if err := scanner.Err(); err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	reader := strings.NewReader(ingredient)
+	in := bufio.NewScanner(reader)
+	for in.Scan() {
+		line := in.Text()
+		if len(line) == 1 {
+			// Group Separator (GS ^]): ctrl-]
+			if line[0] == '\x1D' {
+				break
+			}
+		}
+		ing = append(ing, line)
+	}
+
+	//ing = strings.Split(ingredient, "\n")
+	//result, err := in.ReadString('\n')
+	//fmt.Println(ing)
 
 	// Check if the category exists
 	// err = models.DB.First(&category, category_id).Error
@@ -92,29 +175,20 @@ func CreateRecipe(c *gin.Context) {
 	// 	return
 	// }
 
-	// book := models.Recipe{
-	// 	Id:          0,
-	// 	Name:        name,
-	// 	Description: description,
-	// 	Ingredients: ingredients,
-	// 	CreatedAt:   time.Time{},
-	// 	UpdatedAt:   time.Time{},
-	// }
-
-	fmt.Println(b)
+	//fmt.Println(b)
+	fmt.Println(name, description, ing)
 
 	newRecipe := models.Recipe{
-		Name:        tempRecipe.Name,
-		Description: tempRecipe.Description,
-		Ingredients: tempRecipe.Ingredients,
+		Name:        name,
+		Description: description,
+		Ingredients: ing,
 	}
-	_ = newRecipe
 
-	// err = models.DB.Create(&newRecipe).Error
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	// 	return
-	// }
+	err = models.DB.Create(&newRecipe).Error
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "recipe uploaded successfully",
 	})

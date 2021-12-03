@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"github.com/lib/pq"
 )
 
 // type Hstore struct {
@@ -10,9 +12,9 @@ import (
 
 type Recipe struct {
 	Id          int
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Ingredients []string `gorm:"type:text[]" json:"ingredients"`
+	Name        string
+	Description string
+	Ingredients pq.StringArray `gorm:"type:text[]"`
 
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
